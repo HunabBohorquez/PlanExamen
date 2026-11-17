@@ -1,10 +1,5 @@
 /**
  * PlanExamen — Planificador Algorítmico de Estudio por Pesos, Dificultad y Dominio
- * Arquitectura modular en JavaScript ES6+ Vanilla:
- *  - ExamStore: Gestión de estado, validación, datos demo y persistencia en localStorage.
- *  - StudyScheduler: Motor matemático de normalización, scoring, reserva del 15% y calendarización diaria.
- *  - AllocationChart: Renderizado nativo en <canvas> con soporte HiDPI (Retina).
- *  - UIController: Controlador del DOM, eventos CRUD, seguimiento de progreso y exportación CSV/Markdown.
  */
 
 class ExamStore {
@@ -77,8 +72,7 @@ class ExamStore {
         topics: parsed.topics,
         completedBlocks: parsed.completedBlocks || {},
       };
-    } catch (err) {
-      console.error("Error leyendo localStorage:", err);
+    } catch {
       return null;
     }
   }
@@ -170,9 +164,6 @@ class StudyScheduler {
     return `${hrs} h ${mins} min`;
   }
 
-  /**
-   * Genera la lista de días disponibles desde hoy hasta el día anterior al examen (mínimo 1 día).
-   */
   static buildAvailableDays(examDateISO, weekdayHours, weekendHours) {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -207,13 +198,6 @@ class StudyScheduler {
     return days;
   }
 
-  /**
-   * Ejecuta el algoritmo completo:
-   * 1. Normaliza pesos si no suman 100%.
-   * 2. Calcula Score = PesoNormalizado * Dificultad * (1 - Dominio/100 + 0.1).
-   * 3. Reserva 15% del tiempo total al final para Repaso General y Simulacro.
-   * 4. Distribuye el 85% restante proporcionalmente entre los temas y construye bloques diarios.
-   */
   static computePlan(config, topics) {
     const days = this.buildAvailableDays(config.examDate, config.weekdayHours, config.weekendHours);
     const totalAvailableHours = days.reduce((acc, d) => acc + d.capacityHours, 0);
@@ -262,9 +246,8 @@ class StudyScheduler {
       return days.map((d) => ({ ...d, blocks: [] }));
     }
 
-    // Ordenar temas de mayor a menor Score para priorizar los más críticos primero
     const queue = scoredTopics
-      .filter((t) => t.allocatedHours > 0.001)
+      .filter((t) => t.allocatedHours > 0.016)
       .sort((a, b) => b.score - a.score)
       .map((t) => ({
         topicId: t.id,
@@ -273,7 +256,7 @@ class StudyScheduler {
         isReview: false,
       }));
 
-    if (reviewHours > 0.001) {
+    if (reviewHours > 0.016) {
       queue.push({
         topicId: "review_simulacro",
         title: "Repaso General y Simulacro de Examen",
@@ -282,7 +265,7 @@ class StudyScheduler {
       });
     }
 
-    const EPSILON = 0.0005;
+    const EPSILON = 0.016;
     let queueIndex = 0;
 
     return days.map((day) => {
@@ -366,7 +349,6 @@ class AllocationChart {
     );
     const yMax = Math.ceil(maxVal / 10) * 10;
 
-    // Líneas guía horizontales (Grid Y)
     const steps = 5;
     ctx.font = "11px system-ui, sans-serif";
     ctx.textAlign = "right";
@@ -387,7 +369,6 @@ class AllocationChart {
       ctx.fillText(`${Math.round(value)}%`, padLeft - 8, y);
     }
 
-    // Barras agrupadas por tema
     const groupWidth = plotWidth / scoredTopics.length;
     const barWidth = Math.min(28, Math.max(10, (groupWidth - 18) / 2));
 
@@ -403,15 +384,12 @@ class AllocationChart {
       const xTime = groupCenterX + 2;
       const yTime = padTop + plotHeight - timeHeight;
 
-      // Barra 1: % Peso Normalizado
       ctx.fillStyle = "#94a3b8";
       this.drawRoundedTopRect(ctx, xWeight, yWeight, barWidth, weightHeight, 4);
 
-      // Barra 2: % Tiempo Estudio Asignado
       ctx.fillStyle = "#2563eb";
       this.drawRoundedTopRect(ctx, xTime, yTime, barWidth, timeHeight, 4);
 
-      // Etiquetas de porcentaje encima de cada barra
       ctx.font = "bold 10px system-ui, sans-serif";
       ctx.textAlign = "center";
       ctx.textBaseline = "bottom";
@@ -422,7 +400,6 @@ class AllocationChart {
       ctx.fillStyle = "#1d4ed8";
       ctx.fillText(`${topic.timeSharePct.toFixed(0)}%`, xTime + barWidth / 2, yTime - 3);
 
-      // Etiqueta del eje X (nombre truncado en 2 líneas si es necesario)
       ctx.fillStyle = "#1e293b";
       ctx.font = "11px system-ui, sans-serif";
       ctx.textBaseline = "top";
@@ -522,7 +499,6 @@ class UIController {
   }
 
   bindEvents() {
-    // Configuración del examen
     const handleConfigChange = () => {
       this.store.updateConfig({
         title: this.dom.examTitle.value.trim() || "Examen sin título",
@@ -538,12 +514,10 @@ class UIController {
     this.dom.weekdayHours.addEventListener("input", handleConfigChange);
     this.dom.weekendHours.addEventListener("input", handleConfigChange);
 
-    // Slider de dominio
     this.dom.topicMastery.addEventListener("input", () => {
       this.dom.topicMasteryDisplay.textContent = `${this.dom.topicMastery.value}%`;
     });
 
-    // CRUD Temas
     this.dom.topicForm.addEventListener("submit", (e) => {
       e.preventDefault();
       const payload = {
@@ -568,7 +542,6 @@ class UIController {
 
     this.dom.btnCancelEdit.addEventListener("click", () => this.resetTopicForm());
 
-    // Acciones globales
     this.dom.btnLoadDemo.addEventListener("click", () => {
       this.store.loadDemo();
       this.resetTopicForm();
@@ -743,7 +716,7 @@ class UIController {
                     .join(" ");
 
                   return `
-                    <label class="${blockClasses}" for="chk_${block.blockId}">
+                    <div class="${blockClasses}">
                       <div class="block-left">
                         <input
                           type="checkbox"
@@ -752,13 +725,13 @@ class UIController {
                           data-block-id="${block.blockId}"
                           ${checked ? "checked" : ""}
                         />
-                        <div>
-                          <div class="block-title">${this.escapeHTML(block.title)}</div>
+                        <label for="chk_${block.blockId}" style="cursor:pointer;">
+                          <span class="block-title">${this.escapeHTML(block.title)}</span>
                           <span class="block-tag">${block.isReview ? "Fase Final • Simulacro y Consolidación" : "Bloque Priorizado por Score"}</span>
-                        </div>
+                        </label>
                       </div>
                       <span class="block-duration">${StudyScheduler.formatDuration(block.hours)}</span>
-                    </label>`;
+                    </div>`;
                 })
                 .join("");
 

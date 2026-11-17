@@ -249,7 +249,7 @@ body {
   gap: 0.3rem;
 }
 
-label {
+.form-group label {
   font-size: 0.8rem;
   font-weight: 600;
   color: #334155;
@@ -509,16 +509,20 @@ canvas {
   flex-direction: column;
 }
 
+label.study-block,
 .study-block {
   display: flex;
+  flex-direction: row;
   align-items: center;
   justify-content: space-between;
   gap: 0.75rem;
   padding: 0.65rem 0.85rem;
   border-bottom: 1px solid #f1f5f9;
+  cursor: pointer;
   transition: background-color 0.15s;
 }
 
+label.study-block:last-child,
 .study-block:last-child {
   border-bottom: none;
 }
@@ -539,13 +543,17 @@ canvas {
 
 .block-left {
   display: flex;
+  flex-direction: row;
   align-items: center;
   gap: 0.65rem;
+  flex: 1;
 }
 
 .block-checkbox {
   width: 18px;
   height: 18px;
+  min-width: 18px;
+  margin: 0;
   accent-color: var(--accent);
   cursor: pointer;
 }
@@ -553,9 +561,11 @@ canvas {
 .block-title {
   font-size: 0.88rem;
   font-weight: 600;
+  color: var(--text);
 }
 
 .block-tag {
+  display: block;
   font-size: 0.72rem;
   color: var(--text-muted);
 }
@@ -571,4 +581,30 @@ canvas {
   .main-grid {
     grid-template-columns: 1fr;
   }
+}
+
+/* Fix de renderizado en contenedores con scroll para checkboxes nativos */
+.schedule-list {
+  max-height: none !important;
+  overflow: visible !important;
+}
+
+.day-card {
+  overflow: visible !important;
+  transform: translateZ(0);
+}
+
+.study-block {
+  position: relative;
+  z-index: 1;
+  min-height: 46px;
+}
+
+.block-checkbox {
+  appearance: auto !important;
+  -webkit-appearance: checkbox !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+  position: relative;
+  z-index: 2;
 }

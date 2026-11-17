@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PlanExamen — Planificador Algorítmico de Estudio</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="container topbar-inner">
+      <div class="brand">
+        <span class="brand-badge">PE</span>
+        <div>
+          <h1>PlanExamen</h1>
+          <p class="subtitle">Planificador Algorítmico por Pesos, Dificultad y Dominio</p>
+        </div>
+      </div>
+
+      <div class="global-progress-box" aria-live="polite">
+        <div class="progress-header">
+          <span>Nivel de Preparación Global</span>
+          <strong id="globalProgressText">0.0%</strong>
+        </div>
+        <div class="progress-track">
+          <div id="globalProgressBar" class="progress-fill" style="width: 0%"></div>
+        </div>
+        <small id="globalHoursSummary" class="progress-meta">0.0 h completadas de 0.0 h planificadas</small>
+      </div>
+
+      <div class="topbar-actions">
+        <button id="btnLoadDemo" type="button" class="btn btn-secondary">Cargar Examen Demo</button>
+        <button id="btnResetAll" type="button" class="btn btn-ghost">Reiniciar</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="container main-grid">
+    <!-- Panel Izquierdo: Configuración y Temario -->
+    <section class="column-left">
+      <article class="card">
+        <div class="card-header">
+          <h2>1. Configuración del Examen</h2>
+          <span id="daysRemainingBadge" class="pill pill-info">0 días disponibles</span>
+        </div>
+
+        <form id="examConfigForm" class="config-grid">
+          <div class="form-group full-width">
+            <label for="examTitle">Materia o Examen</label>
+            <input type="text" id="examTitle" placeholder="Ej. Cálculo Vectorial — Segundo Parcial" required />
+          </div>
+
+          <div class="form-group">
+            <label for="examDate">Fecha del Examen</label>
+            <input type="date" id="examDate" required />
+          </div>
+
+          <div class="form-group">
+            <label for="totalAvailableHours">Horas Totales Disponibles</label>
+            <input type="text" id="totalAvailableHours" readonly value="0.0 h" />
+          </div>
+
+          <div class="form-group">
+            <label for="weekdayHours">Horas / día (Lun – Vie)</label>
+            <input type="number" id="weekdayHours" min="0" max="16" step="0.5" value="2.5" required />
+          </div>
+
+          <div class="form-group">
+            <label for="weekendHours">Horas / día (Sáb – Dom)</label>
+            <input type="number" id="weekendHours" min="0" max="16" step="0.5" value="4.5" required />
+          </div>
+        </form>
+      </article>
+
+      <article class="card">
+        <div class="card-header">
+          <h2>2. Gestor de Temario (CRUD)</h2>
+          <span id="weightSumBadge" class="pill pill-ok">Suma de pesos: 0%</span>
+        </div>
+
+        <div id="weightAlert" class="alert alert-warning hidden" role="alert"></div>
+
+        <form id="topicForm" class="topic-form">
+          <input type="hidden" id="editingTopicId" value="" />
+
+          <div class="form-group full-width">
+            <label for="topicName">Nombre del Tema</label>
+            <input type="text" id="topicName" placeholder="Ej. Integrales Múltiples y Cambio de Variable" required />
+          </div>
+
+          <div class="form-group">
+            <label for="topicWeight">Peso en Examen (%)</label>
+            <input type="number" id="topicWeight" min="1" max="100" step="0.5" placeholder="20" required />
+          </div>
+
+          <div class="form-group">
+            <label for="topicDifficulty">Dificultad (1 – 5)</label>
+            <select id="topicDifficulty">
+              <option value="1">1 ★ — Muy Básico</option>
+              <option value="2">2 ★★ — Básico</option>
+              <option value="3" selected>3 ★★★ — Intermedio</option>
+              <option value="4">4 ★★★★ — Difícil</option>
+              <option value="5">5 ★★★★★ — Crítico</option>
+            </select>
+          </div>
+
+          <div class="form-group full-width">
+            <div class="range-label-row">
+              <label for="topicMastery">Nivel de Dominio Actual</label>
+              <strong id="topicMasteryDisplay">40%</strong>
+            </div>
+            <input type="range" id="topicMastery" min="0" max="100" step="5" value="40" />
+          </div>
+
+          <div class="form-actions full-width">
+            <button type="submit" id="btnSaveTopic" class="btn btn-primary">Agregar Tema</button>
+            <button type="button" id="btnCancelEdit" class="btn btn-ghost hidden">Cancelar Edición</button>
+          </div>
+        </form>
+
+        <div class="table-wrapper">
+          <table class="topics-table">
+            <thead>
+              <tr>
+                <th>Tema</th>
+                <th>Peso</th>
+                <th>Dif.</th>
+                <th>Dominio</th>
+                <th>Score</th>
+                <th>Asignado</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="topicsTableBody">
+              <tr>
+                <td colspan="7" class="empty-state">No hay temas registrados. Agrega uno o carga el Examen Demo.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </article>
+    </section>
+
+    <!-- Panel Derecho: Visualización y Cronograma -->
+    <section class="column-right">
+      <article class="card">
+        <div class="card-header">
+          <div>
+            <h2>3. Análisis Comparativo: Peso vs. Tiempo Asignado</h2>
+            <p class="card-subtitle">El 85% del tiempo se distribuye por Score; el 15% final se reserva para simulacro y repaso.</p>
+          </div>
+          <div class="chart-legend">
+            <span class="legend-item"><i class="swatch swatch-weight"></i> % Peso Examen</span>
+            <span class="legend-item"><i class="swatch swatch-time"></i> % Tiempo Estudio (del 85%)</span>
+          </div>
+        </div>
+        <div class="canvas-container">
+          <canvas id="allocationChart" width="760" height="320"></canvas>
+        </div>
+      </article>
+
+      <article class="card">
+        <div class="card-header">
+          <div>
+            <h2>4. Cronograma Algorítmico Diario</h2>
+            <p id="scheduleMetaText" class="card-subtitle">Marca cada bloque completado para actualizar tu nivel de preparación.</p>
+          </div>
+          <div class="export-actions">
+            <button id="btnExportCsv" type="button" class="btn btn-secondary">Exportar CSV</button>
+            <button id="btnCopyMarkdown" type="button" class="btn btn-primary">Copiar Markdown</button>
+          </div>
+        </div>
+
+        <div id="toastNotification" class="toast hidden" role="status"></div>
+
+        <div id="scheduleContainer" class="schedule-list">
+          <p class="empty-state">Configura las horas y agrega temas para generar el cronograma.</p>
+        </div>
+      </article>
+    </section>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>
